@@ -2,43 +2,21 @@ import requests
 import json
 import time
 
-# ==========================
-# Configuration
-# ==========================
-
 BOT_TOKEN = "8722131069:AAEXcnLVSIRC3SkP3bmT_QV_fvVTDbL336U"
 EXTERNAL_API_URL = (
     "https://www.apicentre.in/api/aadhaar_to_pan?"
     "api_key=b067fcc9d14f21ef087f470d8df5ebb38e76e4227a635979b678b8edf4f5"
-)"
+)
 
-BASE_URL = "https://api.telegram.org/bot" + BOT_TOKEN
+BASE_URL = f"https://api.telegram.org/bot{8722131069:AAEXcnLVSIRC3SkP3bmT_QV_fvVTDbL336U}"
 
-# ==========================
-# Keyboard
-# ==========================
-
-REPLY_KEYBOARD = {
-    "keyboard": [
-        [
-            {"text": "📱 Phone Lookup"}
-        ]
-    ],
-    "resize_keyboard": True,
-    "one_time_keyboard": False
-}
-
-
-# ==========================
-# Telegram Functions
-# ==========================
 
 def send_message(chat_id, text, reply_markup=None, parse_mode=None):
-    url = BASE_URL + "/sendMessage"
+    url = f"{BASE_URL}/sendMessage"
 
     payload = {
         "chat_id": chat_id,
-        "text": text
+        "text": text,
     }
 
     if reply_markup is not None:
@@ -48,160 +26,134 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
         payload["parse_mode"] = parse_mode
 
     try:
-        requests.post(url, data=payload, timeout=30)
-    except Exception as e:
-        print("Send Message Error:", e)
+        requests.post(url, data=payload, timeout=30, verify=True)
+    except Exception:
+        pass
 
 
 def get_updates(offset=None):
-    url = BASE_URL + "/getUpdates"
+    url = f"{BASE_URL}/getUpdates"
 
     params = {
-        "timeout": 30
+        "timeout": 30,
     }
 
     if offset is not None:
         params["offset"] = offset
 
     try:
-        response = requests.get(url, params=params, timeout=35)
+        response = requests.get(
+            url,
+            params=params,
+            timeout=35,
+            verify=True,
+        )
+        response.raise_for_status()
         return response.json()
-    except Exception as e:
-        print("Polling Error:", e)
+    except Exception:
         return {"ok": False, "result": []}
 
 
-# ==========================
-# External HTTPS API Helper
-# ==========================
+def is_valid_aadhaar(aadhaar_number):
+    return (
+        isinstance(aadhaar_number, str)
+        and len(aadhaar_number) == 12
+        and aadhaar_number.isdigit()
+    )
 
-def phone_lookup(number):
-    """
-    Dummy HTTPS API request.
-    Replace EXTERNAL_API_URL with your HTTPS endpoint.
 
-    Example:
-    https://example.com/api?mobile=9876543210
-    """
-
+def aadhaar_lookup(aadhaar_number):
     try:
         response = requests.get(
             EXTERNAL_API_URL,
-            params={"mobile": number},
+            params={"aadhaar_no": aadhaar_number},
             timeout=30,
-            verify=True
+            verify=True,
         )
-
+        response.raise_for_status()
         return response.json()
+    except Exception:
+        return None
 
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-
-# ==========================
-# Validation
-# ==========================
-
-def is_valid_mobile(number):
-    return number.isdigit() and len(number) == 10
-
-
-# ==========================
-# Main Bot
-# ==========================
 
 def main():
-    print("Bot Started...")
-
     offset = None
 
-    while True:
-        updates = get_updates(offset)
+    keyboard = {
+        "keyboard": [
+            [{"text": "🆔 Aadhaar to PAN"}]
+        ],
+        "resize_keyboard": True,
+        "one_time_keyboard": False,
+    }
 
-        if updates.get("ok"):
+    while True:
+        try:
+            updates = get_updates(offset)
+
+            if not updates.get("ok"):
+                time.sleep(2)
+                continue
 
             for update in updates.get("result", []):
-
                 offset = update["update_id"] + 1
 
-                if "message" not in update:
+                message = update.get("message")
+                if not message:
                     continue
 
-                message = update["message"]
+                chat = message.get("chat", {})
+                chat_id = chat.get("id")
 
-                chat_id = message["chat"]["id"]
+                if chat_id is None:
+                    continue
 
-                text = message.get("text", "").strip()
+                text = message.get("text", "")
+                text = text.strip()
 
-                # ----------------------
-                # /start
-                # ----------------------
                 if text == "/start":
-
-                    welcome = (
-                        "👋 Welcome!\n\n"
-                        "Use the button below to perform a phone lookup."
-                    )
-
                     send_message(
                         chat_id,
-                        welcome,
-                        reply_markup=REPLY_KEYBOARD
+                        "👋 Welcome!\n\nSelect an option below.",
+                        reply_markup=keyboard,
                     )
 
-                # ----------------------
-                # Button
-                # ----------------------
-                elif text == "📱 Phone Lookup":
-
+                elif text == "🆔 Aadhaar to PAN":
                     send_message(
                         chat_id,
-                        "📞 Send 10 digit mobile number:"
+                        "🪪 Send 12 digit Aadhaar Number:",
                     )
 
-                # ----------------------
-                # Phone Number
-                # ----------------------
-                elif is_valid_mobile(text):
+                elif is_valid_aadhaar(text):
+                    result = aadhaar_lookup(text)
 
-                    send_message(
-                        chat_id,
-                        "🔍 Looking up..."
-                    )
+                    if result is None:
+                        send_message(
+                            chat_id,
+                            "❌ API Error. Please try again later.",
+                        )
+                    else:
+                        formatted = json.dumps(
+                            result,
+                            indent=4,
+                            ensure_ascii=False,
+                        )
 
-                    result = phone_lookup(text)
+                        send_message(
+                            chat_id,
+                            f"<pre>{formatted}</pre>",
+                            parse_mode="HTML",
+                        )
 
-                    formatted = json.dumps(
-                        result,
-                        indent=4,
-                        ensure_ascii=False
-                    )
-
-                    send_message(
-                        chat_id,
-                        "<pre>" + formatted + "</pre>",
-                        parse_mode="HTML"
-                    )
-
-                # ----------------------
-                # Invalid Input
-                # ----------------------
                 else:
-
                     send_message(
                         chat_id,
-                        "❌ Invalid input.\n\nPlease send a valid 10 digit mobile number or use /start."
+                        "❌ Invalid Aadhaar Number. Please send a valid 12 digit Aadhaar Number.",
                     )
 
-        time.sleep(1)
+        except Exception:
+            time.sleep(2)
 
-
-# ==========================
-# Run
-# ==========================
 
 if __name__ == "__main__":
     main()
