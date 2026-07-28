@@ -8,7 +8,7 @@ EXTERNAL_API_URL = (
     "api_key=b067fcc9d14f21ef087f470d8df5ebb38e76e4227a635979b678b8edf4f5"
 )
 
-BASE_URL = f"https://api.telegram.org/bot{8722131069:AAEXcnLVSIRC3SkP3bmT_QV_fvVTDbL336U}"
+BASE_URL = f"https://api.telegram.org/bot{}"
 
 
 def send_message(chat_id, text, reply_markup=None, parse_mode=None):
