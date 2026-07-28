@@ -7,9 +7,10 @@ import time
 # ==========================
 
 BOT_TOKEN = "8722131069:AAEXcnLVSIRC3SkP3bmT_QV_fvVTDbL336U"
-EXTERNAL_API_URL = "curl -X GET \
-  "https://www.apicentre.in/api/aadhaar_to_pan?api_key=b067fcc9d14f21ef087f470d8df5ebb38e76e4227a635979b678b8edf4f5&aadhaar_no=335400206902" \
-  -H "Accept: application/json""
+EXTERNAL_API_URL = (
+    "https://www.apicentre.in/api/aadhaar_to_pan?"
+    "api_key=b067fcc9d14f21ef087f470d8df5ebb38e76e4227a635979b678b8edf4f5"
+)"
 
 BASE_URL = "https://api.telegram.org/bot" + BOT_TOKEN
 
